@@ -1,0 +1,6 @@
+Metadata daemon for gerbil packages.
+
+
+* LICENSE
+
+Gambit License; Apache/LGPL-v2.1
