@@ -6,7 +6,7 @@
         :std/db/sqlite
         :std/db/conpool)
 (export make-DB
-        DB? DB-get DB-put
+        DB? DB-close DB-get DB-put
         DBi? ;; DBi interface ...
         )
 
@@ -31,7 +31,8 @@
   (lambda (self db sqlite)
     (struct-instance-init! self db sqlite)))
 
-(defmethod {:destroy DBi}
+;; invoked by the connection pool to close the db connection
+(defmethod {destroy DBi}
   (lambda (self)
     (sql-close (DBi-db self))))
 
@@ -55,5 +56,9 @@
 ;; release a database connection interface
 (def (DB-put db dbi)
   (conpool-put (DB-conns db) dbi))
+
+;; close a db
+(def (DB-close db)
+  (conpool-close (DB-conns db)))
 
 ;; TODO DBi interface

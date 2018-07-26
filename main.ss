@@ -16,7 +16,10 @@
   (let* ((db (make-DB db-path))
          (srv (make-server db))
          (httpd (start-http-server! address mux: srv)))
-    (thread-join! httpd)))
+    (try
+     (thread-join! httpd)
+     (finally
+      (DB-close db)))))
 
 (def (main . args)
   (def gopt
