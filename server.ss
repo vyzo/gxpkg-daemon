@@ -41,19 +41,20 @@ END
 )
 
 (def (/ srv req res)
-  (http-response-write res 200 '(("Content-type" . "text/plain")) root-page))
+  (http-response-write res 200 '(("Content-type" . "text/plain"))
+    root-page))
 
 (def (/packages srv req res)
   (http-response-write res 500 '(("Content-Type" . "text/plain"))
-                        "/packages: Implement me!\n"))
+    "/packages: Implement me!\n"))
 
 (def (/package srv req res)
   (http-response-write res 500 '(("Content-Type" . "text/plain"))
-                        "/package: Implement me!\n"))
+    "/package: Implement me!\n"))
 
 (def (/search srv req res)
   (http-response-write res 500 '(("Content-Type" . "text/plain"))
-                       "/search: Implement me!\n"))
+    "/search: Implement me!\n"))
 
 (def (default-handler req res)
   (http-response-write res 404 '(("Content-Type" . "text/plain"))
