@@ -38,7 +38,7 @@
 ;; initialize the database
 (def (DB-init! path)
   (let (sqlite (sqlite-open path))
-    ;; TODO initialize the database for the scheme
+    ;; TODO initialize the database for the schema
     {close sqlite}))
 
 ;; create a database connection object; invoked by the connection pool
