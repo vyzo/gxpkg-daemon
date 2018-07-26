@@ -3,5 +3,6 @@
 (import :std/build-script)
 
 (defbuild-script
-  '("server"
+  '("db"
+    "server"
     (exe: "main" bin: "gxpkgd")))

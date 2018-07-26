@@ -8,22 +8,29 @@
         :std/net/httpd
         :std/getopt
         :std/sugar
-        :vyzo/gxpkgd/server)
+        :vyzo/gxpkgd/server
+        :vyzo/gxpkgd/db)
 (export main)
 
-(def (run address)
-  (let (httpd (start-http-server! address mux: (make-server)))
+(def (run address db-path)
+  (let* ((db (make-DB db-path))
+         (srv (make-server db))
+         (httpd (start-http-server! address mux: srv)))
     (thread-join! httpd)))
 
 (def (main . args)
   (def gopt
     (getopt (option 'address "-a" "--address"
                     help: "server address"
-                    default: "127.0.0.1:8080")))
+                    default: "127.0.0.1:8080")
+            (option 'db "-db" "--database"
+                    help: "path for embedded database"
+                    default: (path-expand "var/gxpkgd/pkg.db"
+                                          (getenv "GERBIL_PATH" "~/.gerbil")))))
 
   (try
-   (let (opt (getopt-parse gopt args))
-     (run (hash-get opt 'address)))
+   (let-hash (getopt-parse gopt args)
+     (run .address .db))
    (catch (getopt-error? exn)
      (getopt-display-help exn "gxpkgd" (current-error-port))
      (exit 1))))

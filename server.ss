@@ -1,12 +1,13 @@
 ;;; -*- Gerbil -*-
 ;;; © vyzo
-;;; The Gerbil Package Metadata Server
+;;; server implementation
 
 (import :std/net/httpd
-        :std/sugar)
+        :std/sugar
+        :vyzo/gxpkgd/db)
 (export make-server)
 
-(defstruct server ()
+(defstruct server (db)
   final: #t)
 
 (defmethod {get-handler server}
