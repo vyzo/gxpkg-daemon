@@ -7,16 +7,13 @@
 (import :gerbil/gambit/threads
         :std/net/httpd
         :std/getopt
-        :std/sugar)
+        :std/sugar
+        :vyzo/gxpkgd/server)
 (export main)
 
 (def (run address)
-  (let (httpd (start-http-server! address mux: (make-default-http-mux default-handler)))
+  (let (httpd (start-http-server! address mux: (make-server)))
     (thread-join! httpd)))
-
-(def (default-handler req res)
-  (http-response-write res 404 '(("Content-Type" . "text/plain"))
-    "these aren't the droids you are looking for.\n"))
 
 (def (main . args)
   (def gopt
