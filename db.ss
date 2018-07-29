@@ -61,4 +61,24 @@
 (def (DB-close db)
   (conpool-close (DB-conns db)))
 
-;; TODO DBi interface
+;; DBi interface
+;; utilitiy macros
+(defrules with-dbi ()
+  ((_ (dbi db) body ...)
+   (let (dbi (DB-get db))
+     (try
+      body ...
+      (finally (DB-put dbi))))))
+
+(defrules with-txn ()
+  ((_ dbi body ...)
+   (begin
+     (sql-txn-begin (DBi-c dbi))
+     (try
+      body ...
+      (sql-txn-commit (DBi-c dbi))
+      (catch (e)
+        (sql-txn-abort (DBi-c dbi))
+        (raise e))))))
+
+;; TODO database api
