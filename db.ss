@@ -15,7 +15,7 @@
   constructor: :init! final: #t)
 
 ;; the database connection interface
-(defstruct DBi (db sqldb #|prepared statements ...|#)
+(defstruct DBi (c #|prepared statements ...|#)
   constructor: :init! final: #t)
 
 (defmethod {:init! DB}
@@ -28,13 +28,13 @@
         (set! (DB-conns self) cp)))))
 
 (defmethod {:init! DBi}
-  (lambda (self db sqlite)
-    (struct-instance-init! self db sqlite)))
+  (lambda (self c)
+    (struct-instance-init! self c)))
 
 ;; invoked by the connection pool to close the db connection
 (defmethod {destroy DBi}
   (lambda (self)
-    (sql-close (DBi-db self))))
+    (sql-close (DBi-c self))))
 
 ;; initialize the database
 (def (DB-init! path)
@@ -44,8 +44,8 @@
 
 ;; create a database connection object; invoked by the connection pool
 (def (DB-connect db path)
-  (let* ((sqlite (sql-connect sqlite-open path))
-         (dbi (make-DBi db sqlite)))
+  (let* ((c (sql-connect sqlite-open path))
+         (dbi (make-DBi c)))
     ;; TODO create prepared statements
     dbi))
 
