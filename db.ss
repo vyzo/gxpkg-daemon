@@ -4,11 +4,15 @@
 
 (import :std/db/dbi
         :std/db/sqlite
-        :std/db/conpool)
+        :std/db/conpool
+        :std/iter
+        :std/sugar
+        :std/misc/text)
+
 (export make-DB
         DB? DB-close DB-get DB-put
-        DBi? ;; DBi interface ...
-        )
+        DBi?
+        with-dbi with-txn)
 
 ;; the database
 (defstruct DB (conns #|additional state ...|#)
@@ -40,6 +44,7 @@
 (def (DB-init! path)
   (let (sqlite (sqlite-open path))
     ;; TODO initialize the database for the schema
+    (eval-sql-script sqlite DB-schema)
     {close sqlite}))
 
 ;; create a database connection object; invoked by the connection pool
@@ -50,7 +55,7 @@
     dbi))
 
 ;; get a database connectionn interface
-(def (DB-get db timeout: (timeo (absent-obj)))
+(def (DB-get db timeout: (timeo absent-obj))
   (conpool-get (DB-conns db) timeo))
 
 ;; release a database connection interface
@@ -68,7 +73,7 @@
    (let (dbi (DB-get db))
      (try
       body ...
-      (finally (DB-put dbi))))))
+      (finally (DB-put db dbi))))))
 
 (defrules with-txn ()
   ((_ dbi body ...)
@@ -81,4 +86,11 @@
         (sql-txn-abort (DBi-c dbi))
         (raise e))))))
 
+(def (eval-sql-script dbc sql)
+  (for (stmt (string-split sql #\;))
+    (unless (or (string-empty? stmt) (equal? stmt "\n"))
+      (sql-eval dbc stmt))))
+
 ;; TODO database api
+
+(def DB-schema (include-text "sql/schema.sql"))
