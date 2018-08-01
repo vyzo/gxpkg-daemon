@@ -4,6 +4,7 @@
 
 (import :std/net/httpd
         :std/sugar
+        :std/misc/text
         :vyzo/gxpkgd/db)
 (export make-server)
 
@@ -28,21 +29,10 @@
   void)
 
 ;; handlers
-(def root-page #<<END
-  This is the gerbil package metadata server
-
-  JSON API:
-  - /packages: list packages
-  - /package/<canonical-package-name>:
-    GET returns the package metadata
-    POST publishes a new package to the server
-  - /search/<query>: searches package metadata
-
-END
-)
+(def root-page (include-text "html/index.html"))
 
 (def (/ srv req res)
-  (http-response-write res 200 '(("Content-type" . "text/plain"))
+  (http-response-write res 200 '(("Content-type" . "text/html"))
     root-page))
 
 (def (/packages srv req res)
