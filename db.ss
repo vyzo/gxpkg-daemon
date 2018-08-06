@@ -11,15 +11,16 @@
 
 (export make-DB
         DB? DB-close DB-get DB-put
-        DBi?
-        with-dbi with-txn)
+        DBi? DBi-insert-package DBi-insert-fork
+        with-dbi with-txn
+        sql-bind-map sql-bind-plist)
 
 ;; the database
 (defstruct DB (conns #|additional state ...|#)
   constructor: :init! final: #t)
 
 ;; the database connection interface
-(defstruct DBi (c #|prepared statements ...|#)
+(defstruct DBi (c insert-package insert-fork)
   constructor: :init! final: #t)
 
 (defmethod {:init! DB}
@@ -32,8 +33,8 @@
         (set! (DB-conns self) cp)))))
 
 (defmethod {:init! DBi}
-  (lambda (self c)
-    (struct-instance-init! self c)))
+  (lambda (self c insert-package insert-fork)
+    (struct-instance-init! self c insert-package insert-fork)))
 
 ;; invoked by the connection pool to close the db connection
 (defmethod {destroy DBi}
@@ -43,15 +44,15 @@
 ;; initialize the database
 (def (DB-init! path)
   (let (sqlite (sqlite-open path))
-    ;; TODO initialize the database for the schema
     (eval-sql-script sqlite DB-schema)
     {close sqlite}))
 
 ;; create a database connection object; invoked by the connection pool
 (def (DB-connect db path)
   (let* ((c (sql-connect sqlite-open path))
-         (dbi (make-DBi c)))
-    ;; TODO create prepared statements
+         (dbi (make-DBi c
+                        (sql-prepare c "INSERT INTO packages (author, name, description, runtime, license, last_update, repo) values (?, ?, ?, ?, ?, ?, ?)")
+                        (sql-prepare c "INSERT INTO forks (author, name, html_url, package_id) VALUES (?, ?, ?, ?)"))))
     dbi))
 
 ;; get a database connectionn interface
@@ -85,6 +86,14 @@
       (catch (e)
         (sql-txn-abort (DBi-c dbi))
         (raise e))))))
+
+(defrules sql-bind-map ()
+  ((_ stmt keys data)
+   (apply (cut sql-bind stmt <...>) (map (cut hash-ref data <>) keys))))
+
+(defrules sql-bind-plist ()
+  ((_ stmt props plist)
+   (apply (cut sql-bind stmt <...>) (map (cut pgetq <> plist) props))))
 
 (def (eval-sql-script dbc sql)
   (for (stmt (string-split sql #\;))

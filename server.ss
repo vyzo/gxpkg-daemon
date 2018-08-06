@@ -5,7 +5,9 @@
 (import :std/net/httpd
         :std/sugar
         :std/misc/text
-        :vyzo/gxpkgd/db)
+        (only-in :gerbil/gambit/ports object->string)
+        :vyzo/gxpkgd/db
+        :vyzo/gxpkgd/providers/github)
 (export make-server)
 
 (defstruct server (db)
@@ -18,8 +20,8 @@
       (cut / srv <> <>))
      ((equal? path "/packages")
       (cut /packages srv <> <>))
-     ((string-prefix? path "/package/")
-      (cut /package srv <> <>))
+     ((string-prefix? path "/package/github/")
+      (cut /package/github srv <> <>))
      ((string-prefix? path "/search/")
       (cut /search srv <> <>))
      (else
@@ -39,9 +41,12 @@
   (http-response-write res 500 '(("Content-Type" . "text/plain"))
     "/packages: Implement me!\n"))
 
-(def (/package srv req res)
-  (http-response-write res 500 '(("Content-Type" . "text/plain"))
-    "/package: Implement me!\n"))
+;; GET /package/github/<author>/<package-name>
+(def (/package/github srv req res)
+  (try
+   (github-handler (http-request-url req) (server-db srv) res)
+   (catch (e)
+     (raise e))))
 
 (def (/search srv req res)
   (http-response-write res 500 '(("Content-Type" . "text/plain"))
