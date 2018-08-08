@@ -103,3 +103,17 @@
 ;; TODO database api
 
 (def DB-schema (include-text "sql/schema.sql"))
+
+;; vyzo fixed the macro :)
+(defsyntax (def-DB-method stx)
+  (syntax-case stx ()
+    ((_ method)
+     (with-syntax ((stmt-e (stx-identifier #'method "DBi-" #'method)))
+       #'(defmethod {method DB}
+           (lambda (self dbi props plist)
+                 (let (stmt (stmt-e dbi))
+                   (sql-bind-plist stmt props plist)
+                   (sql-exec stmt))))))))
+
+;; One method per prepared statement.
+(def-DB-method insert-package)

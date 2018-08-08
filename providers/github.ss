@@ -1,3 +1,7 @@
+;;; -*- Gerbil -*-
+;;; © vyzo belmarca
+;;; github.com provider
+
 (import :std/sugar
         :std/iter
         :std/misc/string
@@ -10,7 +14,15 @@
         :vyzo/gxpkgd/db
         :vyzo/gxpkgd/utils)
 
-(export #t)
+(export github-handler)
+
+;; Authenticate all requests if envvar is set.
+;; GitHub rate limits at 60/h for unauthenticated requests, 5000/h for auth.
+(def (github-get url)
+  (let (token (getenv "GITHUB_ACCESS_TOKEN" #f))
+    (if token
+      (http-get (string-append url "?access_token=" token))
+      (http-get url))))
 
 (def (github-pkg-url author name)
   (string-append "https://raw.githubusercontent.com/" author "/" name
@@ -24,13 +36,13 @@
 
 (def (github-get-pkg author name)
   (try
-   (string->sexp (request-text (http-get (github-pkg-url author name))))
+   (string->sexp (request-text (github-get (github-pkg-url author name))))
    (catch (e)
      (raise e))))
 
 (def (github-get-license author name)
   (try
-   (let* ((req (http-get (github-license-url author name)))
+   (let* ((req (github-get (github-license-url author name)))
           (json (request-json req)))
      (hash-ref (hash-ref json 'license) 'spdx_id))
    (catch (e)
@@ -38,7 +50,7 @@
 
 (def (github-get-forks author name)
   (try
-   (let* ((req (http-get (github-forks-url author name)))
+   (let* ((req (github-get (github-forks-url author name)))
           (json (request-json req)))
      (for/collect (fork json)
        (list login: (hash-ref (hash-ref fork 'owner) 'login)
@@ -69,10 +81,8 @@
                          last-update: (number->string (time->seconds (current-time)))
                          repo: repo)))
      (with-dbi (dbi db)
-               (with-txn dbi
-                         (let (insert-package (DBi-insert-package dbi))
-                           (sql-bind-plist insert-package props package)
-                           (sql-exec insert-package))))
+       (with-txn dbi
+         {insert-package db dbi props package}))
      (http-response-write res 200 '(("Content-Type" . "text/plain"))
                           "success\n"))
    (catch (e)
