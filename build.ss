@@ -3,6 +3,8 @@
 (import :std/build-script)
 
 (defbuild-script
-  '("db"
+  '("utils"
+    "db"
+    "providers/github"
     "server"
     (exe: "main" bin: "gxpkgd")))

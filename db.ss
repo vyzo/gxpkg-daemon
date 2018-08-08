@@ -4,18 +4,23 @@
 
 (import :std/db/dbi
         :std/db/sqlite
-        :std/db/conpool)
+        :std/db/conpool
+        :std/iter
+        :std/sugar
+        :std/misc/text)
+
 (export make-DB
         DB? DB-close DB-get DB-put
-        DBi? ;; DBi interface ...
-        )
+        DBi? DBi-insert-package DBi-insert-fork
+        with-dbi with-txn
+        sql-bind-map sql-bind-plist)
 
 ;; the database
 (defstruct DB (conns #|additional state ...|#)
   constructor: :init! final: #t)
 
 ;; the database connection interface
-(defstruct DBi (c #|prepared statements ...|#)
+(defstruct DBi (c insert-package insert-fork)
   constructor: :init! final: #t)
 
 (defmethod {:init! DB}
@@ -28,8 +33,8 @@
         (set! (DB-conns self) cp)))))
 
 (defmethod {:init! DBi}
-  (lambda (self c)
-    (struct-instance-init! self c)))
+  (lambda (self c insert-package insert-fork)
+    (struct-instance-init! self c insert-package insert-fork)))
 
 ;; invoked by the connection pool to close the db connection
 (defmethod {destroy DBi}
@@ -39,18 +44,19 @@
 ;; initialize the database
 (def (DB-init! path)
   (let (sqlite (sqlite-open path))
-    ;; TODO initialize the database for the schema
+    (eval-sql-script sqlite DB-schema)
     {close sqlite}))
 
 ;; create a database connection object; invoked by the connection pool
 (def (DB-connect db path)
   (let* ((c (sql-connect sqlite-open path))
-         (dbi (make-DBi c)))
-    ;; TODO create prepared statements
+         (dbi (make-DBi c
+                        (sql-prepare c "INSERT INTO packages (author, name, description, runtime, license, last_update, repo) values (?, ?, ?, ?, ?, ?, ?)")
+                        (sql-prepare c "INSERT INTO forks (author, name, html_url, package_id) VALUES (?, ?, ?, (SELECT id FROM packages WHERE repo = ?))"))))
     dbi))
 
 ;; get a database connectionn interface
-(def (DB-get db timeout: (timeo (absent-obj)))
+(def (DB-get db timeout: (timeo absent-obj))
   (conpool-get (DB-conns db) timeo))
 
 ;; release a database connection interface
@@ -68,7 +74,7 @@
    (let (dbi (DB-get db))
      (try
       body ...
-      (finally (DB-put dbi))))))
+      (finally (DB-put db dbi))))))
 
 (defrules with-txn ()
   ((_ dbi body ...)
@@ -81,4 +87,34 @@
         (sql-txn-abort (DBi-c dbi))
         (raise e))))))
 
+(defrules sql-bind-map ()
+  ((_ stmt keys data)
+   (apply (cut sql-bind stmt <...>) (map (cut hash-ref data <>) keys))))
+
+(defrules sql-bind-plist ()
+  ((_ stmt props plist)
+   (apply (cut sql-bind stmt <...>) (map (cut pgetq <> plist) props))))
+
+(def (eval-sql-script dbc sql)
+  (for (stmt (string-split sql #\;))
+    (unless (or (string-empty? stmt) (equal? stmt "\n"))
+      (sql-eval dbc stmt))))
+
 ;; TODO database api
+
+(def DB-schema (include-text "sql/schema.sql"))
+
+;; vyzo fixed the macro :)
+(defsyntax (def-DB-method stx)
+  (syntax-case stx ()
+    ((_ method)
+     (with-syntax ((stmt-e (stx-identifier #'method "DBi-" #'method)))
+       #'(defmethod {method DB}
+           (lambda (self dbi props plist)
+                 (let (stmt (stmt-e dbi))
+                   (sql-bind-plist stmt props plist)
+                   (sql-exec stmt))))))))
+
+;; One method per prepared statement.
+(def-DB-method insert-package)
+(def-DB-method insert-fork)

@@ -4,7 +4,10 @@
 
 (import :std/net/httpd
         :std/sugar
-        :vyzo/gxpkgd/db)
+        :std/misc/text
+        (only-in :gerbil/gambit/ports object->string)
+        :vyzo/gxpkgd/db
+        :vyzo/gxpkgd/providers/github)
 (export make-server)
 
 (defstruct server (db)
@@ -17,8 +20,8 @@
       (cut / srv <> <>))
      ((equal? path "/packages")
       (cut /packages srv <> <>))
-     ((string-prefix? path "/package/")
-      (cut /package srv <> <>))
+     ((string-prefix? path "/package/github/")
+      (cut /package/github srv <> <>))
      ((string-prefix? path "/search/")
       (cut /search srv <> <>))
      (else
@@ -28,30 +31,22 @@
   void)
 
 ;; handlers
-(def root-page #<<END
-  This is the gerbil package metadata server
-
-  JSON API:
-  - /packages: list packages
-  - /package/<canonical-package-name>:
-    GET returns the package metadata
-    POST publishes a new package to the server
-  - /search/<query>: searches package metadata
-
-END
-)
+(def root-page (include-text "html/index.html"))
 
 (def (/ srv req res)
-  (http-response-write res 200 '(("Content-type" . "text/plain"))
+  (http-response-write res 200 '(("Content-type" . "text/html"))
     root-page))
 
 (def (/packages srv req res)
   (http-response-write res 500 '(("Content-Type" . "text/plain"))
     "/packages: Implement me!\n"))
 
-(def (/package srv req res)
-  (http-response-write res 500 '(("Content-Type" . "text/plain"))
-    "/package: Implement me!\n"))
+;; GET /package/github/<author>/<package-name>
+(def (/package/github srv req res)
+  (try
+   (github-handler (http-request-url req) (server-db srv) res)
+   (catch (e)
+     (raise e))))
 
 (def (/search srv req res)
   (http-response-write res 500 '(("Content-Type" . "text/plain"))
