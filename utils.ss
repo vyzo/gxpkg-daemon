@@ -1,9 +1,4 @@
-(import :std/pregexp
-        :std/error)
-(export read-string string->sexp)
-
-(def (read-string s)
-  (read (open-input-string s)))
+(export string->sexp)
 
 (def (string->sexp s)
-  (read-string s))
+  (read (open-input-string s)))
