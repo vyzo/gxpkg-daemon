@@ -1,19 +1,19 @@
 CREATE TABLE IF NOT EXISTS packages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  author TEXT NOT NULL,
-  name TEXT NOT NULL,
-  description TEXT NOT NULL,
-  runtime TEXT NOT NULL,
-  license TEXT NOT NULL,
-  last_update TEXT NOT NULL,
-  repo TEXT UNIQUE NOT NULL
+  author TEXT,
+  name TEXT,
+  description TEXT,
+  runtime TEXT,
+  license TEXT,
+  last_update TEXT,
+  repo TEXT UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS forks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  author TEXT NOT NULL,
-  name TEXT NOT NULL,
-  html_url TEXT UNIQUE NOT NULL,
+  author TEXT,
+  name TEXT,
+  html_url TEXT UNIQUE,
   package_id INTEGER,
   FOREIGN KEY(package_id) REFERENCES packages(package_id)
 );

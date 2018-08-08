@@ -53,9 +53,10 @@
    (let* ((req (github-get (github-forks-url author name)))
           (json (request-json req)))
      (for/collect (fork json)
-       (list login: (hash-ref (hash-ref fork 'owner) 'login)
+       (list author: (hash-ref (hash-ref fork 'owner) 'login)
              name: (hash-ref fork 'name)
-             html_url: (hash-ref fork 'html_url))))))
+             html-url: (hash-ref fork 'html_url)
+             repo: (string-append "https://github.com/" author "/" name))))))
 
 (def (github-parse-url url)
   (let (slug (string-split (string-trim-prefix "/package/github/" url) #\/))
@@ -69,10 +70,11 @@
           (repo (string-append "https://github.com/" author "/" name))
           (pkg (github-get-pkg author name))
           (description (pgetq description: pkg))
-          (runtime (symbol->string (pgetq runtime: pkg))) ; currently is a symbol
+          (runtime (unless* (symbol->string (pgetq runtime: pkg)) ""))
           (license (github-get-license author name))
-          ;; (forks (github-get-forks author name))
-          (props '(author: name: description: runtime: license: last-update: repo:))
+          (forks (github-get-forks author name))
+          (fork-props '(author: name: html-url: repo:))
+          (package-props '(author: name: description: runtime: license: last-update: repo:))
           (package (list author: author
                          name: name
                          description: description
@@ -80,9 +82,14 @@
                          license: license
                          last-update: (number->string (time->seconds (current-time)))
                          repo: repo)))
+
+     ;; SQL transactions
      (with-dbi (dbi db)
        (with-txn dbi
-         {insert-package db dbi props package}))
+         {insert-package db dbi package-props package}
+         (for (fork forks)
+           {insert-fork db dbi fork-props fork})))
+
      (http-response-write res 200 '(("Content-Type" . "text/plain"))
                           "success\n"))
    (catch (e)

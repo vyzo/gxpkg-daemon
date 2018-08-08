@@ -52,7 +52,7 @@
   (let* ((c (sql-connect sqlite-open path))
          (dbi (make-DBi c
                         (sql-prepare c "INSERT INTO packages (author, name, description, runtime, license, last_update, repo) values (?, ?, ?, ?, ?, ?, ?)")
-                        (sql-prepare c "INSERT INTO forks (author, name, html_url, package_id) VALUES (?, ?, ?, ?)"))))
+                        (sql-prepare c "INSERT INTO forks (author, name, html_url, package_id) VALUES (?, ?, ?, (SELECT id FROM packages WHERE repo = ?))"))))
     dbi))
 
 ;; get a database connectionn interface
@@ -117,3 +117,4 @@
 
 ;; One method per prepared statement.
 (def-DB-method insert-package)
+(def-DB-method insert-fork)
